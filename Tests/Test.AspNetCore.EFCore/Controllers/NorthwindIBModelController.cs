@@ -28,7 +28,7 @@ using System.Threading.Tasks;
 namespace Test.AspNetCore.Controllers {
 
   [Route("breeze/[controller]/[action]")]
-  [BreezeQueryFilter]
+  [BreezeQueryFilter(MaxDepth = 2, MaxTake = 2000)]
   public class NorthwindIBModelController : Controller {
     private NorthwindPersistenceManager PersistenceManager;
 
@@ -292,8 +292,9 @@ namespace Test.AspNetCore.Controllers {
 
 #region standard queries
 
-    [HttpGet]
     //    [EnableBreezeQuery(MaxAnyAllExpressionDepth = 3)]
+    [BreezeQueryFilter(MaxDepth = 3, UsePost = true)]
+    [HttpGet, HttpPost]
     public IQueryable<Customer> Customers() {
       var q = PersistenceManager.Context.Customers;
       // For testing expression trees
@@ -303,7 +304,14 @@ namespace Test.AspNetCore.Controllers {
 
     [HttpGet]
     //    [EnableBreezeQuery(MaxExpansionDepth = 3)]
+    [BreezeQueryFilter(MaxDepth = 3)]
     public IQueryable<Order> Orders() {
+      return PersistenceManager.Context.Orders;
+    }
+
+    [HttpGet]
+    [BreezeQueryFilter(MaxTake = 5)]
+    public IQueryable<Order> OrdersWithMaxTake() {
       return PersistenceManager.Context.Orders;
     }
 
@@ -330,6 +338,11 @@ namespace Test.AspNetCore.Controllers {
     [HttpGet]
     public IQueryable<Region> Regions() {
       return PersistenceManager.Context.Regions;
+    }
+
+    [HttpGet]
+    public IQueryable<EmployeeTerritory> EmployeeTerritories() {
+      return PersistenceManager.Context.EmployeeTerritories;
     }
 
     [HttpGet]
@@ -422,9 +435,24 @@ namespace Test.AspNetCore.Controllers {
     }
 
     [HttpGet]
+    public IQueryable<Employee> EmployeesNoTracking() {
+      return PersistenceManager.Context.Employees.AsNoTracking();
+    }
+
+    [HttpGet]
     public IQueryable<Employee> EmployeesFilteredByCountryAndBirthdate(DateTime birthDate, string country) {
       return PersistenceManager.Context.Employees.Where(emp => emp.BirthDate >= birthDate && emp.Country == country);
     }
+
+    [HttpGet]
+    public Dictionary<int, List<Employee>> EmployeeDictionary(DateTime birthDate, string country) {
+      var empsByManager = PersistenceManager.Context.Employees.GroupBy(x => x.ReportsToEmployeeID ?? 0).ToDictionary(
+                group => group.Key,
+                group => group.ToList()
+            );
+      return empsByManager;
+    }
+
 
 #if NHIBERNATE
     [HttpGet]
